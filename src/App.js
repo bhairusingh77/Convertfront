@@ -6,10 +6,14 @@ function App() {
   const [format, setFormat] = useState('mp4');
   const [downloadUrl, setDownloadUrl] = useState('');
   const [fileDownloaded, setFileDownloaded] = useState(false);
-  const [previewKey, setPreviewKey] = useState(0); // Add a key to force video refresh
+  const [previewKey, setPreviewKey] = useState(0); // Key to force video refresh
+  const [loading, setLoading] = useState(false); // Loading state
+  const [error, setError] = useState(null); // Error state
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
     try {
       const response = await fetch('https://convertback.onrender.com/api/download', {
         method: 'POST',
@@ -19,15 +23,22 @@ function App() {
         body: JSON.stringify({ url, format }),
       });
 
+      if (!response.ok) {
+        throw new Error('Failed to download media');
+      }
+
       const data = await response.json();
       if (data.downloadUrl) {
-        const timestamp = new Date().getTime(); // Add timestamp for cache-busting
+        const timestamp = new Date().getTime(); // Cache-busting
         setDownloadUrl(`https://convertback.onrender.com${data.downloadUrl}?t=${timestamp}`);
         setFileDownloaded(true);
-        setPreviewKey(prevKey => prevKey + 1); // Ensure component re-renders
+        setPreviewKey(prevKey => prevKey + 1); // Force component re-render
       }
     } catch (error) {
       console.error('Error:', error);
+      setError('An error occurred while downloading the file. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,8 +79,11 @@ function App() {
           <option value="mp4">Video (MP4)</option>
           <option value="mp3">Audio (MP3)</option>
         </select>
-        <button type="submit">Download</button>
+        <button type="submit" disabled={loading}>Download</button>
       </form>
+
+      {loading && <p>Loading... Please wait.</p>} {/* Loading Indicator */}
+      {error && <p className="error">{error}</p>} {/* Error Message */}
 
       {downloadUrl && (
         <div className="preview-container">
